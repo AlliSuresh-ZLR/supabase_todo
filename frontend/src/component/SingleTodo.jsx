@@ -1,92 +1,145 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from "react";
 import { MdDone, MdDelete } from "react-icons/md";
 import { RiEditFill } from "react-icons/ri";
-import { REACT_APP_API_URL } from '../constants';
+const SingleTodo = ({ data, todos, setTodos }) => {
+  const [edit, setEdit] = useState(false);
+  const [status, setStatus] = useState(data.status);
+  const [editText, setEditText] = useState({
+    text: data?.text,
+    status: status,
+    id: data?.id,
+  });
+  const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
+  const editHandler = async (e, id) => {
+    setEditText({ text: e.target.value || editText.text, id: id });
+  };
+  const statusEditHandler = async () => {
+    try {
+      const response = await fetch(
+        "https://sjzeoltpxdgjmfcnapeb.supabase.co/functions/v1/updateTodo",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify({
+            id: editText?.id,
+            text: editText?.text,
+            status: status == "PENDING" ? "DONE" : "PENDING",
+          }),
+        }
+      );
 
-const SingleTodo = ({data,todos,setTodos}) => {
-  console.log("this is from singel todo",data)
-  const [edit,setEdit] = useState(false)
-  const [editText,setEditText] = useState({text:"",status:"PENDING"})
-  const API_URL = REACT_APP_API_URL
-
-  const editHandler = async (e,id) => {
-    console.log(e.target.value,id)
-    setEditText({text:e.target.value,id:id})
-};
-const submitHandler = async()=>{
-  try {
-    const response = await fetch(API_URL+"/"+editText?.id, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: editText?.text,status:"PENDING" }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      setEdit(false);
+      setStatus((prev) => (prev == "DONE" ? "PENDING" : "DONE"));
+    } catch (error) {
+      console.error("Error adding todo:", error);
     }
-    setEdit(false)
-    // const data = await response.json();
-    // setTodos([...todos, { text: todo,status:"PENDING" }]);
-    // setTodo('');
-  } catch (error) {
-    console.error('Error adding todo:', error);
-  }
+  };
+  const submitHandler = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(
+        "https://sjzeoltpxdgjmfcnapeb.supabase.co/functions/v1/updateTodo",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify({
+            id: editText?.id,
+            text: editText?.text,
+            status: editText?.status,
+          }),
+        }
+      );
 
-}
-
-const deleteHandler = async (id)=>{
-
-  try {
-    const response = await fetch(API_URL+"/"+id, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text: editText?.text,status:"PENDING" }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      setEdit(false);
+    } catch (error) {
+      console.error("Error adding todo:", error);
     }
-    console.log("from deletion",)
-    setTodos(prevTodos => prevTodos.filter(todo => todo.id !== id));
-    // setTodos(todos.filter((item)=>{item.id!==id}));
-    // setTodo('');
-  } catch (error) {
-    console.error('Error adding todo:', error);
-  }
+  };
 
-}
+  const deleteHandler = async (id) => {
+    try {
+      const response = await fetch(
+        "https://sjzeoltpxdgjmfcnapeb.supabase.co/functions/v1/deleteTodo",
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+          },
+          body: JSON.stringify({
+            id: id,
+            text: editText?.text,
+            status: "PENDING",
+          }),
+        }
+      );
 
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      console.log("from deletion");
+      setTodos((prevTodos) => prevTodos.filter((todo) => todo.id !== id));
+      // setTodo('');
+    } catch (error) {
+      console.error("Error adding todo:", error);
+    }
+  };
 
   return (
-        <form className="single_todo" onSubmit={(e) => submitHandler(e)}>
-      {data.status==="DONE" ? (
+    <form className="single_todo" onSubmit={(e) => submitHandler(e)}>
+      {data.status === "DONE" ? (
         <span>
           <s>{data?.text}</s>
         </span>
       ) : edit ? (
-        <span><input
-        className="single_todo--input"
-          placeholder=""
-          defaultValue={data.text}
-          onChange={(e)=>{editHandler(e,data.id)}
-          }
-          autoFocus
-        />
+        <span>
+          <input
+            className="single_todo--input"
+            placeholder=""
+            defaultValue={data.text}
+            onChange={(e) => {
+              editHandler(e, data.id);
+            }}
+            autoFocus
+          />
         </span>
       ) : (
         <span>{data.text}</span>
       )}
       <div className="todo_options">
-        <MdDone className= "icon"onClick={() => {}} />
-        <RiEditFill className= "icon"onClick={() => {setEdit(prev=>!prev)}} />
-        <MdDelete className= "icon"onClick={() => {deleteHandler(data.id)}} />
+        <MdDone
+          className="icon"
+          onClick={(e) => {
+            statusEditHandler(e, data.id);
+          }}
+        />
+        <RiEditFill
+          className="icon"
+          onClick={() => {
+            setEdit((prev) => !prev);
+          }}
+        />
+        <MdDelete
+          className="icon"
+          onClick={() => {
+            deleteHandler(data.id);
+          }}
+        />
       </div>
     </form>
-  )
-}
+  );
+};
 
-export default SingleTodo
+export default SingleTodo;
